@@ -1,0 +1,3 @@
+[submodule "stonne"]
+	path = stonne
+	url = https://github.com/ssamaha3-hub/stonne.git
