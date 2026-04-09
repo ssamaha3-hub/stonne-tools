@@ -38,12 +38,14 @@ Config format and parser.
 
 `sweep/configs/densegemm_sweep.yaml` defines the sweep — which parameters are fixed and which are swept across multiple values. The example config sweeps T_M, T_N, and T_K producing 18 total runs.
 
-`sweep/config_parser.py` reads that YAML, validates all required fields are present, and returns a clean dictionary the rest of the sweep engine can use.
+`sweep/config_parser.py` reads that YAML or JSON, normalizes all keys and types, and splits the config into three sections: global settings (binary path, operation, output directory), fixed parameters, and sweep parameters. It supports all four STONNE operations — DenseGEMM, FC, SparseGEMM, and CONV. Integer parameters like M, N, K, and tile sizes are automatically coerced to int. Enum-style string arguments like `MK_STA_KN_STR` are preserved exactly. If a `base_dimensions` block is present it is merged into fixed automatically.
 
-Run the parser:
+`sweep/validator.py` runs after parsing and checks that the config is actually runnable. It validates global settings (operation is supported, output directory is writable), hardware parameters (num_ms, dn_bw, rn_bw must be positive powers of 2), operation-specific required fields (e.g. DenseGEMM requires M, N, K, T_M, T_N, T_K), SparseGEMM sparsity ranges and dataflow string, CONV tile divisibility constraints (R % T_R = 0, S % T_S = 0, C % T_C = 0), and sweep structure (all values must be non-empty lists with a non-zero Cartesian product). Errors are specific — for example: `DenseGEMM requires 'T_K' but it is missing from both 'fixed' and 'sweep'.`
+
+Run the parser and validator together:
 
 ```bash
-python3 sweep/config_parser.py sweep/configs/densegemm_sweep.yaml
+python3 -m sweep.config_parser sweep/configs/densegemm_sweep.yaml
 ```
 
 Expected output:
@@ -56,6 +58,18 @@ Config loaded successfully!
   Fixed     : {'M': 20, 'N': 20, 'K': 256, 'num_ms': 256, 'dn_bw': 64, 'rn_bw': 64, 'print_stats': 1}
   Sweep     : {'T_M': [1, 2, 4], 'T_N': [1, 2], 'T_K': [32, 64, 128]}
   Total runs: 18
+```
+
+Run the validator standalone:
+
+```bash
+python3 -m sweep.validator sweep/configs/densegemm_sweep.yaml
+```
+
+Expected output:
+
+```
+Validation passed.
 ```
 
 ### Section 2 - Kobby
