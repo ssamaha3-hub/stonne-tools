@@ -40,45 +40,48 @@ Config format and parser.
 
 ### Section 2 - Kobby
 
-Config parser and validation rules.
+Expander and command builder.
 
-`sweep/config_parser.py` reads the sweep YAML, normalizes all keys and types, and splits the config into three sections: global settings (binary path, operation, output directory), fixed parameters, and sweep parameters. Integer parameters like M, N, K, and tile sizes are automatically coerced to int. It currently supports DenseGEMM.
+`sweep/expander.py` takes the parsed config and computes the Cartesian product of all sweep parameter lists. For each combination it merges the fixed and sweep params into one flat dict and assigns a run ID, a human-readable run name, and an output directory path. The run names match the format the scanner expects — for example `run_0001_TM1_TN1_TK32`.
 
-`sweep/validator.py` runs after parsing and checks that the config is actually runnable. It validates global settings (operation is supported, output directory is writable), hardware parameters (num_ms, dn_bw, rn_bw must be positive powers of 2), DenseGEMM required fields (M, N, K must be in fixed; T_M, T_N, T_K must be in fixed or sweep), and sweep structure (all values must be non-empty lists with a non-zero Cartesian product). Errors are specific — for example: `DenseGEMM requires 'T_K' but it is missing from both 'fixed' and 'sweep'.`
+`sweep/command_builder.py` takes a run spec from the expander and builds the STONNE CLI command as a list of strings ready for `subprocess.run()`. For DenseGEMM it produces a command like `["./stonne/stonne", "-DenseGEMM", "-M=20", "-N=20", "-K=256", "-num_ms=256", "-dn_bw=64", "-rn_bw=64", "-T_M=1", "-T_N=1", "-T_K=32"]`.
 
-Run the parser and validator together:
+Preview the expanded runs:
 
 ```bash
-python3 -m sweep.config_parser sweep/configs/densegemm_sweep.yaml
+python3 -m sweep.expander sweep/configs/densegemm_sweep.yaml
 ```
 
 Expected output:
 
 ```
-Config loaded successfully!
-  Operation : DenseGEMM
-  Binary    : ./stonne/stonne
-  Output    : ./experiment_runs
-  Fixed     : {'M': 20, 'N': 20, 'K': 256, 'num_ms': 256, 'dn_bw': 64, 'rn_bw': 64, 'print_stats': 1}
-  Sweep     : {'T_M': [1, 2, 4], 'T_N': [1, 2], 'T_K': [32, 64, 128]}
-  Total runs: 18
+Total runs: 18
+
+  run_0001_TM1_TN1_TK32
+    params     : {'M': 20, 'N': 20, 'K': 256, 'num_ms': 256, 'dn_bw': 64, 'rn_bw': 64, 'print_stats': 1, 'T_M': 1, 'T_N': 1, 'T_K': 32}
+    output_dir : ./experiment_runs/run_0001_TM1_TN1_TK32
+
+  run_0002_TM1_TN1_TK64
+    ...
 ```
 
-Run the validator standalone:
+Preview the built commands:
 
 ```bash
-python3 -m sweep.validator sweep/configs/densegemm_sweep.yaml
+python3 -m sweep.command_builder sweep/configs/densegemm_sweep.yaml
 ```
 
 Expected output:
 
 ```
-Validation passed.
+Total commands: 18
+
+  run_0001_TM1_TN1_TK32
+    ./stonne/stonne -DenseGEMM -M=20 -N=20 -K=256 -num_ms=256 -dn_bw=64 -rn_bw=64 -print_stats=1 -T_M=1 -T_N=1 -T_K=32
+
+  run_0002_TM1_TN1_TK64
+    ...
 ```
-
-### Section 3 - Ify
-
-Expander, command builder, and runner. Not built yet.
 
 ### Section 3 - Ify
 
