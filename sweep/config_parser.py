@@ -1,39 +1,33 @@
 """
 config_parser.py
-Reads YAML or JSON sweep config files.
+Reads the sweep YAML config file.
 Normalizes keys and types, splits into global/fixed/sweep sections,
 and returns a clean dict the rest of the sweep runner can trust.
 """
 
 import yaml
-import json
 import os
+
 try:
     from .validator import validate_config
 except ImportError:
     from validator import validate_config  # type: ignore[no-redef]
 
-SUPPORTED_OPERATIONS = ["DenseGEMM", "FC", "SparseGEMM", "CONV"]
+SUPPORTED_OPERATIONS = ["DenseGEMM"]
 
 REQUIRED_TOP_LEVEL_KEYS = ["binary", "output_root", "operation", "fixed", "sweep"]
 
-# These params are always integers
+# DenseGEMM parameters that must always be integers
 INT_PARAMS = {
     "M", "N", "K",
-    "R", "S", "C", "G", "X", "Y", "strides",
     "num_ms", "dn_bw", "rn_bw",
     "T_M", "T_N", "T_K",
-    "T_R", "T_S", "T_C", "T_G", "T_X_", "T_Y_",
     "print_stats",
 }
 
-# These params are always floats
-FLOAT_PARAMS = {"MK_sparsity", "KN_sparsity"}
-
-
 
 def _coerce_value(key: str, value):
-    """Coerce a scalar value to the correct type for its parameter name."""
+    """Coerce a value to the correct type based on parameter name."""
     if key in INT_PARAMS:
         try:
             return int(value)
@@ -41,19 +35,11 @@ def _coerce_value(key: str, value):
             raise ValueError(
                 f"Parameter '{key}' must be an integer, got: {value!r}"
             )
-    if key in FLOAT_PARAMS:
-        try:
-            return float(value)
-        except (ValueError, TypeError):
-            raise ValueError(
-                f"Parameter '{key}' must be a number, got: {value!r}"
-            )
-    # Strings and unknown params: preserve exactly as-is
     return value
 
 
 def _normalize_fixed(d: dict) -> dict:
-    """Strip whitespace from keys and coerce values in a fixed-params dict."""
+    """Strip whitespace from keys and coerce values."""
     if not isinstance(d, dict):
         raise ValueError("'fixed' must be a dictionary of parameter key-value pairs.")
     result = {}
@@ -64,7 +50,7 @@ def _normalize_fixed(d: dict) -> dict:
 
 
 def _normalize_sweep(d: dict) -> dict:
-    """Strip whitespace from keys and coerce list values in a sweep dict."""
+    """Strip whitespace from keys and coerce list values."""
     if not isinstance(d, dict):
         raise ValueError("'sweep' must be a dictionary of parameter lists.")
     result = {}
@@ -82,7 +68,7 @@ def _normalize_sweep(d: dict) -> dict:
 
 def load_config(config_path: str) -> dict:
     """
-    Load and parse a sweep config YAML or JSON file.
+    Load and parse a sweep config YAML file.
 
     Returns a normalized config dict:
         {
@@ -103,16 +89,11 @@ def load_config(config_path: str) -> dict:
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
-    _, ext = os.path.splitext(config_path.lower())
     with open(config_path, "r") as f:
-        if ext == ".json":
-            raw = json.load(f)
-        else:
-            # Default to YAML (.yaml, .yml, or unknown extension)
-            raw = yaml.safe_load(f)
+        raw = yaml.safe_load(f)
 
     if not isinstance(raw, dict):
-        raise ValueError("Config file must be a YAML/JSON mapping at the top level.")
+        raise ValueError("Config file must be a YAML mapping at the top level.")
 
     # Normalize top-level keys
     raw = {k.strip(): v for k, v in raw.items()}
@@ -122,7 +103,7 @@ def load_config(config_path: str) -> dict:
         if key not in raw:
             raise ValueError(f"Config is missing required top-level key: '{key}'")
 
-    # Validate and extract operation
+    # Validate operation
     operation = str(raw["operation"]).strip()
     if operation not in SUPPORTED_OPERATIONS:
         raise ValueError(
@@ -130,19 +111,12 @@ def load_config(config_path: str) -> dict:
             f"Supported operations: {SUPPORTED_OPERATIONS}"
         )
 
-    # Merge base_dimensions into fixed if present (both formats are valid)
     if not isinstance(raw["fixed"], dict):
         raise ValueError("'fixed' must be a dictionary of parameter key-value pairs.")
-    fixed_raw = dict(raw["fixed"])
-    if "base_dimensions" in raw:
-        if not isinstance(raw["base_dimensions"], dict):
-            raise ValueError("'base_dimensions' must be a dictionary.")
-        fixed_raw.update(raw["base_dimensions"])
 
-    fixed = _normalize_fixed(fixed_raw)
+    fixed = _normalize_fixed(raw["fixed"])
     sweep = _normalize_sweep(raw["sweep"])
 
-    # Build global settings
     global_settings = {
         "binary": str(raw["binary"]).strip(),
         "output_root": str(raw["output_root"]).strip(),
@@ -166,7 +140,7 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python config_parser.py <path_to_config.yaml>")
+        print("Usage: python -m sweep.config_parser <path_to_config.yaml>")
         sys.exit(1)
 
     try:
