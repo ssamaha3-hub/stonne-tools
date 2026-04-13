@@ -4,6 +4,15 @@ Parameter sweep engine and result comparison tool for the STONNE neural network 
 
 STONNE runs one simulation at a time through its CLI. These tools add a sweep engine on top to run many simulations automatically, and a comparison tool to aggregate the results into one CSV.
 
+Known Behavior:
+
+Some parameter combinations in the sweep are intentionally invalid.
+STONNE enforces internal constraints on tile sizes and hardware capacity.
+
+When a configuration exceeds these limits, the simulation aborts.
+Our tool captures these failures and records them in each run folder
+(status.json, stderr.log) for analysis.
+
 ---
 
 ## Setup

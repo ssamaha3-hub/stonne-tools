@@ -11,23 +11,43 @@ Example output:
 """
 
 
+# Put common dimensions first, then hardware params, then anything else
+PREFERRED_ORDER = [
+    "M", "N", "K",
+    "num_ms", "dn_bw", "rn_bw",
+    "print_stats",
+    "T_M", "T_N", "T_K",
+]
+
+
 def build_command(binary: str, run_spec: dict) -> list:
     """
     Build the STONNE CLI command for one run.
 
     Args:
-        binary  : path to the stonne binary e.g. "./stonne/stonne"
-        run_spec: a run spec dict from expander.expand()
+        binary: path to the stonne binary
+        run_spec: run spec dict from expander.expand()
 
     Returns:
-        list of strings ready to pass to subprocess.run()
+        list of strings ready for subprocess.run()
     """
     operation = run_spec["operation"]
-    params    = run_spec["params"]
+    params = run_spec["params"]
 
     cmd = [binary, f"-{operation}"]
-    for key, value in params.items():
-        cmd.append(f"-{key}={value}")
+
+    seen = set()
+
+    # Add preferred params first
+    for key in PREFERRED_ORDER:
+        if key in params:
+            cmd.append(f"-{key}={params[key]}")
+            seen.add(key)
+
+    # Add any remaining params in sorted order
+    for key in sorted(params.keys()):
+        if key not in seen:
+            cmd.append(f"-{key}={params[key]}")
 
     return cmd
 
