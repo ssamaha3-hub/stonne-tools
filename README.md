@@ -161,7 +161,36 @@ Counters:
 
 ### Section 2 - Kobby
 
-Energy wrapper and aggregator. Not built yet.
+Energy wrapper and aggregator.
+
+`compare/energy_wrapper.py` wraps STONNE's `calculate_energy.py` script. Given a counters file and a run output directory, it locates `stonne/energy_tables/calculate_energy.py` and `stonne/energy_tables/energy_model.txt`, runs the energy script, saves the raw output as `energy.txt` in the run folder, and parses a single numeric energy value from the result. If the energy script fails for any reason, it returns `None` instead of crashing so the aggregator can still produce rows for the other runs.
+
+`compare/aggregator.py` takes a list of scanner records and produces one flat row per run for the CSV. Each row contains run metadata (name, status), sweep params (TM, TN, TK), hardware settings (num_ms, dn_bw, rn_bw), performance metrics (cycles, layer_type), counters totals (wire writes/reads, FIFO push/pop), the parsed energy value, and paths to the stats/counters/energy files. Column order is stable so the CSV export can consume it directly.
+
+Test the aggregator against existing run folders:
+
+```bash
+python3 compare/aggregator.py ./experiment_runs ./stonne
+```
+
+Expected output (abbreviated):
+
+```
+Aggregated 1 run(s) from ./experiment_runs
+
+  run_0001_TM2_TN1_TK64  (success)
+    TM: 2
+    TN: 1
+    TK: 64
+    num_ms: 256
+    dn_bw: 64
+    rn_bw: 64
+    cycles: 6200
+    CB_WIRE_WRITE: 3200
+    FIFO_PUSH: 629046
+    FIFO_POP: 628532
+    energy: 9.21
+```
 
 ### Section 3 - Ify
 
