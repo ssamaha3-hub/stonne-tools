@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 
@@ -20,16 +21,60 @@ def scan_runs(root_dir):
             "stats_file": None,
             "counters_file": None,
             "params": {},
+            "success": None,
+            "return_code": None,
+            "status_file": None,
         }
 
-        for filename in os.listdir(run_path):
-            filepath = os.path.join(run_path, filename)
-            if filename.endswith(".txt"):
-                record["stats_file"] = filepath
-            elif filename.endswith(".counters"):
-                record["counters_file"] = filepath
+        status_path = os.path.join(run_path, "status.json")
+        run_config_path = os.path.join(run_path, "run_config.json")
 
-        record["params"] = parse_run_name(entry)
+        # Prefer status.json because it has the most accurate run metadata
+        if os.path.isfile(status_path):
+            record["status_file"] = status_path
+            try:
+                with open(status_path, "r") as f:
+                    status_data = json.load(f)
+
+                record["success"] = status_data.get("success")
+                record["return_code"] = status_data.get("return_code")
+
+                # Prefer full params from status.json
+                record["params"] = status_data.get("params", {}) or {}
+
+                # status.json currently stores the stats file under "stats_json"
+                record["stats_file"] = status_data.get("stats_json")
+                record["counters_file"] = status_data.get("counters_file")
+
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        # Fallback: if status.json is missing or incomplete, scan files directly
+        if not record["stats_file"] or not record["counters_file"]:
+            for filename in os.listdir(run_path):
+                filepath = os.path.join(run_path, filename)
+
+                if not os.path.isfile(filepath):
+                    continue
+
+                if not record["stats_file"] and filename.endswith(".txt"):
+                    record["stats_file"] = filepath
+                elif not record["counters_file"] and filename.endswith(".counters"):
+                    record["counters_file"] = filepath
+
+        # Fallback: if params still missing, try run_config.json
+        if not record["params"] and os.path.isfile(run_config_path):
+            try:
+                with open(run_config_path, "r") as f:
+                    run_config = json.load(f)
+                record["params"] = run_config.get("params", {}) or {}
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        # Last fallback: parse TM/TN/TK from folder name
+        if not record["params"]:
+            record["params"] = parse_run_name(entry)
+
         records.append(record)
 
     return records
@@ -38,13 +83,10 @@ def scan_runs(root_dir):
 def parse_run_name(run_name):
     params = {}
     parts = run_name.split("_")
-    i = 0
-    while i < len(parts):
-        part = parts[i]
+    for part in parts:
         for key in ["TM", "TN", "TK"]:
             if part.startswith(key) and part[len(key):].isdigit():
                 params[key] = int(part[len(key):])
-        i += 1
     return params
 
 
@@ -53,8 +95,10 @@ if __name__ == "__main__":
     runs = scan_runs(root)
     print(f"Found {len(runs)} run(s) in {root}\n")
     for r in runs:
-        print(f"  Run     : {r['run_name']}")
-        print(f"  Params  : {r['params']}")
-        print(f"  Stats   : {r['stats_file']}")
-        print(f"  Counters: {r['counters_file']}")
+        print(f"  Run        : {r['run_name']}")
+        print(f"  Success    : {r['success']}")
+        print(f"  ReturnCode : {r['return_code']}")
+        print(f"  Params     : {r['params']}")
+        print(f"  Stats      : {r['stats_file']}")
+        print(f"  Counters   : {r['counters_file']}")
         print()

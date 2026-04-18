@@ -37,24 +37,14 @@ COLUMN_ORDER = [
 
 
 def aggregate_run(record: dict, stats: dict, counters: dict, energy: dict) -> dict:
-    """
-    Build one flat row for a single run.
-
-    Args:
-        record  : scanner record for this run
-        stats   : dict from stats_parser.parse_stats() or None
-        counters: dict from stats_parser.parse_counters() or None
-        energy  : dict from energy_wrapper.run_energy() or None
-
-    Returns:
-        flat dict with every column in COLUMN_ORDER (missing values are None)
-    """
     row = {col: None for col in COLUMN_ORDER}
 
     row["run_name"] = record.get("run_name")
+
     params = record.get("params") or {}
-    for key in ("TM", "TN", "TK"):
-        row[key] = params.get(key)
+    row["TM"] = params.get("T_M", params.get("TM"))
+    row["TN"] = params.get("T_N", params.get("TN"))
+    row["TK"] = params.get("T_K", params.get("TK"))
 
     if stats:
         for key in ("cycles", "num_ms", "dn_bw", "rn_bw", "layer_type"):
@@ -67,13 +57,23 @@ def aggregate_run(record: dict, stats: dict, counters: dict, energy: dict) -> di
                 row[key] = counters[key]
 
     if energy:
-        row["energy"]      = energy.get("energy")
+        row["energy"] = energy.get("energy")
         row["energy_file"] = energy.get("energy_file")
-        row["status"] = "success" if energy.get("success") else "energy_failed"
-    else:
-        row["status"] = "success" if stats else "no_stats"
 
-    row["stats_file"]    = record.get("stats_file")
+    # Base status on the run execution result first
+    success = record.get("success")
+    if success is True:
+        row["status"] = "success"
+    elif success is False:
+        row["status"] = "failed"
+    else:
+        row["status"] = "unknown"
+
+    # If energy failed on an otherwise successful run, make that visible
+    if row["status"] == "success" and energy and not energy.get("success"):
+        row["status"] = "energy_failed"
+
+    row["stats_file"] = record.get("stats_file")
     row["counters_file"] = record.get("counters_file")
 
     return row

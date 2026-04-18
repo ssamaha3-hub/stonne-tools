@@ -21,8 +21,8 @@ import subprocess
 import sys
 
 
-DEFAULT_ENERGY_SCRIPT = "stonne/energy_tables/calculate_energy.py"
-DEFAULT_ENERGY_TABLE  = "stonne/energy_tables/energy_model.txt"
+DEFAULT_ENERGY_SCRIPT = "stonne/stonne/energy_tables/calculate_energy.py"
+DEFAULT_ENERGY_TABLE  = "stonne/stonne/energy_tables/energy_model.txt"
 
 
 def _find_energy_assets(stonne_root: str = ".") -> tuple:
