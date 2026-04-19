@@ -139,7 +139,7 @@ def run_one(binary: str, run_spec: dict) -> dict:
             "started_at": started_at,
             "finished_at": _timestamp(),
             "output_dir": output_dir,
-            "stats_json": detected["stats_json"],
+            "stats_json": detected["stats_file"],
             "counters_file": detected["counters_file"],
             "all_files": detected["all_files"],
         }

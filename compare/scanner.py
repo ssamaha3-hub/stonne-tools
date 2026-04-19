@@ -57,7 +57,7 @@ def scan_runs(root_dir):
                 if not os.path.isfile(filepath):
                     continue
 
-                if not record["stats_file"] and filename.endswith(".txt"):
+                if not record["stats_file"] and filename.endswith(".txt") and filename.startswith("output_stats"):
                     record["stats_file"] = filepath
                 elif not record["counters_file"] and filename.endswith(".counters"):
                     record["counters_file"] = filepath
