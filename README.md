@@ -1,10 +1,17 @@
 # stonne-tools
 
-Parameter sweep engine and result comparison tool for the STONNE neural network accelerator simulator.
+## What this solves
 
-STONNE runs one simulation at a time through its CLI. These tools add a sweep engine on top to run many simulations automatically, and a comparison tool to aggregate all results into a single CSV.
+STONNE is a great simulator, but running many experiments and comparing them is a manual slog. One CLI command per run, timestamped files everywhere, energy computed by a separate script, and no way to see results side by side.
 
-Some parameter combinations in the sweep are intentionally invalid — STONNE enforces internal constraints on tile sizes. When a configuration exceeds these limits the simulation aborts. Failed runs are captured and recorded in each run folder (`status.json`, `stderr.log`).
+This repo fixes that with two small tools:
+
+- `sweep/` reads a YAML config and runs every parameter combination automatically
+- `compare/` collects the outputs, runs the energy calculator, and writes one CSV
+
+The result: one command to run 12 experiments, one command to see them ranked.
+
+Some parameter combinations in the sweep are intentionally invalid. STONNE enforces internal constraints on tile sizes, and when a configuration exceeds those limits the simulation aborts. Failed runs are captured and recorded in each run folder (`status.json`, `stderr.log`).
 
 ---
 
