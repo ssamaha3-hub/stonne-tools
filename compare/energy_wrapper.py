@@ -3,6 +3,7 @@ import re
 import subprocess
 import sys
 
+# stonne submodule has its own stonne/ inside it, hence the double path
 DEFAULT_ENERGY_SCRIPT = "stonne/stonne/energy_tables/calculate_energy.py"
 DEFAULT_ENERGY_TABLE = "stonne/stonne/energy_tables/energy_model.txt"
 
@@ -13,6 +14,7 @@ def _find_energy_assets(stonne_root="."):
     return script, table
 
 
+# the energy script prints the total as the last number, so grab that
 def _parse_energy(raw_text):
     numbers = re.findall(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", raw_text)
     if not numbers:
@@ -58,6 +60,7 @@ def run_energy(counters_file, run_output_dir, stonne_root="."):
         result["error"] = f"energy script exited {proc.returncode}: {proc.stderr.strip()}"
         return result
 
+    # prefer the out_file if the script wrote one, otherwise save stdout ourselves
     if os.path.isfile(energy_file):
         with open(energy_file, "r") as f:
             raw = f.read()

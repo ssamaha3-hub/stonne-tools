@@ -1,6 +1,7 @@
 from itertools import product
 
 
+# scanner splits run names by underscore, so T_M in the folder name would break it
 def _run_name_key(key):
     return key.replace("_", "")
 
@@ -15,8 +16,10 @@ def expand(config):
     sweep_values = [sweep[k] for k in sweep_keys]
 
     runs = []
+    # cartesian product of every sweep list
     for i, combo in enumerate(product(*sweep_values), start=1):
         sweep_combo = dict(zip(sweep_keys, combo))
+        # sweep values override fixed if keys collide
         params = {**fixed, **sweep_combo}
         sweep_parts = [f"{_run_name_key(k)}{v}" for k, v in sweep_combo.items()]
         run_id = f"run_{i:04d}"

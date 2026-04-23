@@ -14,6 +14,7 @@ COLUMN_ORDER = [
 
 
 def aggregate_run(record, stats, counters, energy):
+    # start with every column set to None so missing data just leaves blanks in the csv
     row = {col: None for col in COLUMN_ORDER}
     row["run_name"] = record.get("run_name")
 
@@ -44,6 +45,7 @@ def aggregate_run(record, stats, counters, energy):
     else:
         row["status"] = "unknown"
 
+    # stonne ran fine but energy calc didn't — mark it so we can tell apart in the csv
     if row["status"] == "success" and energy and not energy.get("success"):
         row["status"] = "energy_failed"
 

@@ -1,3 +1,4 @@
+# keep stonne flags in a predictable order so commands are easy to diff
 PREFERRED_ORDER = [
     "M", "N", "K",
     "num_ms", "dn_bw", "rn_bw",
@@ -18,6 +19,7 @@ def build_command(binary, run_spec):
             cmd.append(f"-{key}={params[key]}")
             seen.add(key)
 
+    # anything not in PREFERRED_ORDER gets appended at the end
     for key in sorted(params.keys()):
         if key not in seen:
             cmd.append(f"-{key}={params[key]}")
