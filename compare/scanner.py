@@ -29,40 +29,29 @@ def scan_runs(root_dir):
         status_path = os.path.join(run_path, "status.json")
         run_config_path = os.path.join(run_path, "run_config.json")
 
-        # Prefer status.json because it has the most accurate run metadata
         if os.path.isfile(status_path):
             record["status_file"] = status_path
             try:
                 with open(status_path, "r") as f:
                     status_data = json.load(f)
-
                 record["success"] = status_data.get("success")
                 record["return_code"] = status_data.get("return_code")
-
-                # Prefer full params from status.json
                 record["params"] = status_data.get("params", {}) or {}
-
-                # status.json currently stores the stats file under "stats_json"
                 record["stats_file"] = status_data.get("stats_json")
                 record["counters_file"] = status_data.get("counters_file")
-
             except (json.JSONDecodeError, OSError):
                 pass
 
-        # Fallback: if status.json is missing or incomplete, scan files directly
         if not record["stats_file"] or not record["counters_file"]:
             for filename in os.listdir(run_path):
                 filepath = os.path.join(run_path, filename)
-
                 if not os.path.isfile(filepath):
                     continue
-
                 if not record["stats_file"] and filename.endswith(".txt") and filename.startswith("output_stats"):
                     record["stats_file"] = filepath
                 elif not record["counters_file"] and filename.endswith(".counters"):
                     record["counters_file"] = filepath
 
-        # Fallback: if params still missing, try run_config.json
         if not record["params"] and os.path.isfile(run_config_path):
             try:
                 with open(run_config_path, "r") as f:
@@ -71,7 +60,6 @@ def scan_runs(root_dir):
             except (json.JSONDecodeError, OSError):
                 pass
 
-        # Last fallback: parse TM/TN/TK from folder name
         if not record["params"]:
             record["params"] = parse_run_name(entry)
 

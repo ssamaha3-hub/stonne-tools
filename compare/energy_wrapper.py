@@ -1,43 +1,19 @@
-"""
-energy_wrapper.py
-Wraps the STONNE energy calculation script.
-
-STONNE command from docs:
-    ./calculate_energy.py -table_file=<energy_model.txt> \
-                          -counter_file=<counters_file> \
-                         [-out_file=<output_file>]
-
-This wrapper:
-- locates energy_tables/calculate_energy.py and energy_model.txt
-- runs the script for a given counters file
-- saves the raw output as energy.txt in the run folder
-- tries to extract a single numeric energy value
-- returns None on failure so the aggregator keeps going
-"""
-
 import os
 import re
 import subprocess
 import sys
 
-
 DEFAULT_ENERGY_SCRIPT = "stonne/stonne/energy_tables/calculate_energy.py"
-DEFAULT_ENERGY_TABLE  = "stonne/stonne/energy_tables/energy_model.txt"
+DEFAULT_ENERGY_TABLE = "stonne/stonne/energy_tables/energy_model.txt"
 
 
-def _find_energy_assets(stonne_root: str = ".") -> tuple:
-    """Locate the energy script and energy model file relative to stonne_root."""
+def _find_energy_assets(stonne_root="."):
     script = os.path.join(stonne_root, DEFAULT_ENERGY_SCRIPT)
-    table  = os.path.join(stonne_root, DEFAULT_ENERGY_TABLE)
+    table = os.path.join(stonne_root, DEFAULT_ENERGY_TABLE)
     return script, table
 
 
-def _parse_energy(raw_text: str):
-    """
-    Try to extract a single numeric energy value from the script output.
-    Strategy: find the last number in the text.
-    Return None if nothing numeric is found.
-    """
+def _parse_energy(raw_text):
     numbers = re.findall(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", raw_text)
     if not numbers:
         return None
@@ -47,22 +23,7 @@ def _parse_energy(raw_text: str):
         return None
 
 
-def run_energy(counters_file: str, run_output_dir: str, stonne_root: str = ".") -> dict:
-    """
-    Run the STONNE energy script for one run's counters file.
-
-    Args:
-        counters_file : path to the .counters file for this run
-        run_output_dir: folder where energy.txt will be written
-        stonne_root   : path to the stonne project root (defaults to cwd)
-
-    Returns:
-        dict with keys:
-            success      : bool
-            energy       : float or None
-            energy_file  : path to saved energy.txt or None
-            error        : error message string or None
-    """
+def run_energy(counters_file, run_output_dir, stonne_root="."):
     result = {"success": False, "energy": None, "energy_file": None, "error": None}
 
     if not counters_file or not os.path.isfile(counters_file):
@@ -97,8 +58,6 @@ def run_energy(counters_file: str, run_output_dir: str, stonne_root: str = ".") 
         result["error"] = f"energy script exited {proc.returncode}: {proc.stderr.strip()}"
         return result
 
-    # Prefer the out_file if it was written; otherwise use stdout
-    raw = ""
     if os.path.isfile(energy_file):
         with open(energy_file, "r") as f:
             raw = f.read()
@@ -107,9 +66,9 @@ def run_energy(counters_file: str, run_output_dir: str, stonne_root: str = ".") 
         with open(energy_file, "w") as f:
             f.write(raw)
 
-    result["success"]     = True
+    result["success"] = True
     result["energy_file"] = energy_file
-    result["energy"]      = _parse_energy(raw)
+    result["energy"] = _parse_energy(raw)
     return result
 
 
@@ -119,8 +78,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     counters = sys.argv[1]
-    out_dir  = sys.argv[2]
-    root     = sys.argv[3] if len(sys.argv) > 3 else "."
+    out_dir = sys.argv[2]
+    root = sys.argv[3] if len(sys.argv) > 3 else "."
 
     r = run_energy(counters, out_dir, root)
     if r["success"]:
