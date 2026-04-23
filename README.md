@@ -34,7 +34,7 @@ make
 Install Python dependencies:
 
 ```bash
-pip install pyyaml
+pip install -r requirements.txt
 ```
 
 ---
