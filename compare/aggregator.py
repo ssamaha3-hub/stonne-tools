@@ -1,42 +1,59 @@
 import os
 import sys
 
+# fixed column order keeps summary.csv easy to read and consistent across runs
 COLUMN_ORDER = [
-    "run_name", "status",
-    "TM", "TN", "TK",
-    "num_ms", "dn_bw", "rn_bw",
-    "cycles", "layer_type",
-    "CB_WIRE_WRITE", "CB_WIRE_READ",
-    "FIFO_PUSH", "FIFO_POP",
+    "run_name",
+    "status",
+    "TM",
+    "TN",
+    "TK",
+    "num_ms",
+    "dn_bw",
+    "rn_bw",
+    "cycles",
+    "layer_type",
+    "CB_WIRE_WRITE",
+    "CB_WIRE_READ",
+    "FIFO_PUSH",
+    "FIFO_POP",
     "energy",
-    "stats_file", "counters_file", "energy_file",
+    "stats_file",
+    "counters_file",
+    "energy_file",
 ]
 
 
+# merge everything about a single run into one flat csv row
 def aggregate_run(record, stats, counters, energy):
-    # start with every column set to None so missing data just leaves blanks in the csv
+    # initialize every column as None so missing values appear blank in the csv
     row = {col: None for col in COLUMN_ORDER}
     row["run_name"] = record.get("run_name")
 
+    # support both T_M/T_N/T_K and TM/TN/TK parameter styles
     params = record.get("params") or {}
     row["TM"] = params.get("T_M", params.get("TM"))
     row["TN"] = params.get("T_N", params.get("TN"))
     row["TK"] = params.get("T_K", params.get("TK"))
 
+    # copy parsed stats into the row
     if stats:
         for key in ("cycles", "num_ms", "dn_bw", "rn_bw", "layer_type"):
             if key in stats:
                 row[key] = stats[key]
 
+    # copy parsed counters totals into the row
     if counters:
         for key in ("CB_WIRE_WRITE", "CB_WIRE_READ", "FIFO_PUSH", "FIFO_POP"):
             if key in counters:
                 row[key] = counters[key]
 
+    # attach energy result if available
     if energy:
         row["energy"] = energy.get("energy")
         row["energy_file"] = energy.get("energy_file")
 
+    # base status on whether the original run itself succeeded
     success = record.get("success")
     if success is True:
         row["status"] = "success"
@@ -45,15 +62,17 @@ def aggregate_run(record, stats, counters, energy):
     else:
         row["status"] = "unknown"
 
-    # stonne ran fine but energy calc didn't — mark it so we can tell apart in the csv
+    # if the simulation succeeded but energy calculation failed, show that separately
     if row["status"] == "success" and energy and not energy.get("success"):
         row["status"] = "energy_failed"
 
+    # keep file paths for traceability and debugging
     row["stats_file"] = record.get("stats_file")
     row["counters_file"] = record.get("counters_file")
     return row
 
 
+# process every scanned run and return all rows ready for csv export
 def aggregate_all(records, stonne_root="."):
     try:
         from .stats_parser import parse_stats, parse_counters
@@ -63,13 +82,18 @@ def aggregate_all(records, stonne_root="."):
         from energy_wrapper import run_energy
 
     rows = []
+
     for record in records:
+        # parse stats and counters for this run
         stats = parse_stats(record.get("stats_file"))
         counters = parse_counters(record.get("counters_file"))
+
+        # run energy calculation only if the counters file exists
         energy = None
         counters_file = record.get("counters_file")
         if counters_file and os.path.isfile(counters_file):
             energy = run_energy(counters_file, record["run_path"], stonne_root)
+
         rows.append(aggregate_run(record, stats, counters, energy))
 
     return rows

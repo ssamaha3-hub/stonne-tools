@@ -208,3 +208,6 @@ __marimo__/
 
 #experiment runs records
 /experiment_runs
+
+# summary csv
+/summary.csv

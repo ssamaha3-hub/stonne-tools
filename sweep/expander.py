@@ -1,11 +1,12 @@
 from itertools import product
 
-
-# scanner splits run names by underscore, so T_M in the folder name would break it
+# scanner splits names by underscore
+# so remove underscores from parameter names when building run folder names
 def _run_name_key(key):
     return key.replace("_", "")
 
 
+# expand the sweep config into every parameter combination
 def expand(config):
     fixed = config["fixed"]
     sweep = config["sweep"]
@@ -16,21 +17,28 @@ def expand(config):
     sweep_values = [sweep[k] for k in sweep_keys]
 
     runs = []
-    # cartesian product of every sweep list
+
+    # generate the cartesian product of all sweep values
     for i, combo in enumerate(product(*sweep_values), start=1):
         sweep_combo = dict(zip(sweep_keys, combo))
-        # sweep values override fixed if keys collide
+
+        # sweep values override fixed values if the same key appears in both
         params = {**fixed, **sweep_combo}
+
+        # build readable folder name like run_0001_TM1_TN1_TK32
         sweep_parts = [f"{_run_name_key(k)}{v}" for k, v in sweep_combo.items()]
         run_id = f"run_{i:04d}"
         run_name = "_".join([run_id] + sweep_parts)
-        runs.append({
-            "run_id": run_id,
-            "operation": operation,
-            "params": params,
-            "run_name": run_name,
-            "output_dir": f"{output_root}/{run_name}",
-        })
+
+        runs.append(
+            {
+                "run_id": run_id,
+                "operation": operation,
+                "params": params,
+                "run_name": run_name,
+                "output_dir": f"{output_root}/{run_name}",
+            }
+        )
 
     return runs
 

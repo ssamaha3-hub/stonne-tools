@@ -10,6 +10,8 @@ except ImportError:
     from csv_export import write_csv
 
 
+# entry point for the analyzer pipeline
+# scan runs -> aggregate metrics -> write summary.csv
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else "./experiment_runs"
     output_csv = sys.argv[2] if len(sys.argv) > 2 else f"{root}/summary.csv"

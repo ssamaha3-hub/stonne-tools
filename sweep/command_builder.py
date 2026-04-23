@@ -1,12 +1,19 @@
-# keep stonne flags in a predictable order so commands are easy to diff
+# keep stonne flags in a predictable order so commands are easier to read and diff
 PREFERRED_ORDER = [
-    "M", "N", "K",
-    "num_ms", "dn_bw", "rn_bw",
+    "M",
+    "N",
+    "K",
+    "num_ms",
+    "dn_bw",
+    "rn_bw",
     "print_stats",
-    "T_M", "T_N", "T_K",
+    "T_M",
+    "T_N",
+    "T_K",
 ]
 
 
+# build the final stonne command list for one run
 def build_command(binary, run_spec):
     operation = run_spec["operation"]
     params = run_spec["params"]
@@ -14,12 +21,13 @@ def build_command(binary, run_spec):
     cmd = [binary, f"-{operation}"]
     seen = set()
 
+    # add common parameters in a stable preferred order first
     for key in PREFERRED_ORDER:
         if key in params:
             cmd.append(f"-{key}={params[key]}")
             seen.add(key)
 
-    # anything not in PREFERRED_ORDER gets appended at the end
+    # add any extra parameters not covered above
     for key in sorted(params.keys()):
         if key not in seen:
             cmd.append(f"-{key}={params[key]}")

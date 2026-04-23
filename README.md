@@ -58,7 +58,7 @@ python3 -m sweep.runner sweep/configs/densegemm_sweep.yaml
 python3 compare/scanner.py ./experiment_runs
 
 # Generate summary CSV
-python3 -m compare.main ./experiment_runs ./summary.csv .
+python3 -m compare.main ./experiment_runs ./experiment_runs/summary.csv
 ```
 
 ---

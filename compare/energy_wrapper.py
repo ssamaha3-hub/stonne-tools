@@ -3,36 +3,49 @@ import re
 import subprocess
 import sys
 
-# stonne submodule has its own stonne/ inside it, hence the double path
+# stonne submodule contains another stonne directory inside it
+# so the energy assets live one level deeper than the repo root
 DEFAULT_ENERGY_SCRIPT = "stonne/stonne/energy_tables/calculate_energy.py"
 DEFAULT_ENERGY_TABLE = "stonne/stonne/energy_tables/energy_model.txt"
 
 
+# locate the energy script and model file relative to the project root
 def _find_energy_assets(stonne_root="."):
     script = os.path.join(stonne_root, DEFAULT_ENERGY_SCRIPT)
     table = os.path.join(stonne_root, DEFAULT_ENERGY_TABLE)
     return script, table
 
 
-# the energy script prints the total as the last number, so grab that
+# the energy script prints the total energy as the last numeric value
+# so extract the last number we can find
 def _parse_energy(raw_text):
     numbers = re.findall(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", raw_text)
     if not numbers:
         return None
+
     try:
         return float(numbers[-1])
     except ValueError:
         return None
 
 
+# run STONNE's energy script on one counters file
 def run_energy(counters_file, run_output_dir, stonne_root="."):
-    result = {"success": False, "energy": None, "energy_file": None, "error": None}
+    result = {
+        "success": False,
+        "energy": None,
+        "energy_file": None,
+        "error": None,
+    }
 
+    # make sure the counters file exists
     if not counters_file or not os.path.isfile(counters_file):
         result["error"] = f"counters file not found: {counters_file}"
         return result
 
     script, table = _find_energy_assets(stonne_root)
+
+    # make sure the helper script and energy model exist
     if not os.path.isfile(script):
         result["error"] = f"energy script not found: {script}"
         return result
@@ -40,27 +53,32 @@ def run_energy(counters_file, run_output_dir, stonne_root="."):
         result["error"] = f"energy model not found: {table}"
         return result
 
+    # save the raw energy output inside the run folder
     os.makedirs(run_output_dir, exist_ok=True)
     energy_file = os.path.join(run_output_dir, "energy.txt")
 
     cmd = [
-        "python3", script,
+        "python3",
+        script,
         f"-table_file={table}",
         f"-counter_file={counters_file}",
         f"-out_file={energy_file}",
     ]
 
+    # run the external energy script
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     except OSError as e:
         result["error"] = f"failed to launch energy script: {e}"
         return result
 
+    # if the script failed, keep going but report the failure
     if proc.returncode != 0:
         result["error"] = f"energy script exited {proc.returncode}: {proc.stderr.strip()}"
         return result
 
-    # prefer the out_file if the script wrote one, otherwise save stdout ourselves
+    # prefer the written out_file if it exists
+    # otherwise fall back to stdout and save it ourselves
     if os.path.isfile(energy_file):
         with open(energy_file, "r") as f:
             raw = f.read()
@@ -86,7 +104,7 @@ if __name__ == "__main__":
 
     r = run_energy(counters, out_dir, root)
     if r["success"]:
-        print(f"Energy script ran successfully")
+        print("Energy script ran successfully")
         print(f"  raw output   : {r['energy_file']}")
         print(f"  parsed energy: {r['energy']}")
     else:
